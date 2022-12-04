@@ -1,0 +1,2 @@
+[default.databases.logs]
+url = "db/logs/db.sqlite"

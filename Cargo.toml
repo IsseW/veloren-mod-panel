@@ -1,0 +1,20 @@
+[package]
+name = "modbot"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+veloren-common = { git = "https://gitlab.com/veloren/veloren", branch = "master", features = ["no-assets"] }
+veloren-client = { git = "https://gitlab.com/veloren/veloren", branch = "master" }
+async-channel = "1.5"
+tokio = { version = "1.2", features = ["macros", "rt-multi-thread", "signal"] }
+chrono = { version = "0.4.23", features = ["serde"] }
+# sea-orm = { version = "0.10.4", features = ["with-chrono", "runtime-tokio"] }
+serde = { version = "1.0.148", features = ["derive"] }
+rocket = { version = "0.5.0-rc.2", features = ["json"] }
+rocket_db_pools = { version = "0.1.0-rc.2", features = ["sqlx_sqlite"] }
+rocket_dyn_templates = { version = "0.1.0-rc.2", features = ["handlebars"] }
+sqlx = { version = "0.5.1", default-features = false, features = ["macros", "offline", "migrate", "chrono", "uuid"] }
+kankyo = "0.3.0"

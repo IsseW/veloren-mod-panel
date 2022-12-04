@@ -1,0 +1,6 @@
+/target
+.env
+cred.txt
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

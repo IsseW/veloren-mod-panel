@@ -1,0 +1,102 @@
+
+:root {
+  --bg-dark: #242423;
+  --bg-light: #333533;
+  --fg-light: #E8EDDF;
+  --callout: rgb(255, 255, 102);
+  --callout-dark: #101010;
+}
+
+html, body, main {
+  background-color: var(--bg-dark);
+  color: #fff;
+  font-family: "Inter", Arial, Helvetica, sans-serif, "Noto Color Emoji";
+  font-weight: 400;
+  text-shadow: rgb(15, 15, 16) 0px 0px 0px;
+}
+
+.message {
+  color: #82899c;
+  width: 100%;
+  word-wrap: break-word;
+}
+.time {
+  color: #616268;
+  display: none;
+}
+.time-log {
+  color: #616268;
+}
+
+.name {
+  color: rgb(40 158 215);
+  cursor: pointer;
+}
+
+#message-box {
+  position: absolute;
+  z-index: 9;
+  background: #46104c;
+  border: 1px solid #980ac3;
+}
+
+.message-box {
+  overflow-y: scroll;
+  word-wrap: normal;
+  height: 30em;
+  width: 30em;
+  resize: both;
+}
+
+.message-box-header {
+  padding: 10px;
+  cursor: move;
+  z-index: 10;
+  background-color: #370b4d;
+  color: #fff;
+}
+
+#chat-label {
+  pointer-events:none;
+}
+
+.message-box::-webkit-scrollbar {
+  width: 1em;
+}
+ 
+.message-box::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+}
+ 
+.message-box::-webkit-scrollbar-thumb {
+  background-color: rgba(35, 35, 35, 0.73);
+  outline: 1px solid rgb(51, 29, 62);
+}
+
+.message-box::-webkit-scrollbar-corner {
+  background-color: #1c051f;
+}
+
+.offline-dot {
+  height: 25px;
+  width: 25px;
+  background-color: #666666;
+  outline: #a891bd;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.online-dot {
+  height: 25px;
+  width: 25px;
+  background-color: #00ffa2;
+  outline: #a891bd;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+#chat-log {
+  display: table-cell;
+  vertical-align: top;
+  height: 200px;
+}

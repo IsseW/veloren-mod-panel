@@ -54,7 +54,6 @@ function search_player() {
                 add_player(player_search_list, player_id);
             });
 
-            player_search_text.value = "";
             player_search_text.disabled = false;
             player_search_button.disabled = false;
         });

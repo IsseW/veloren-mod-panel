@@ -3,6 +3,8 @@ let chat_log_template = document.getElementById("chat-log-message");
 
 let chat_log_div = document.getElementById("chat-log");
 
+let online_dot = document.getElementById("online-dot");
+
 const self_id = parseInt(window.location.href.substring(window.location.href.lastIndexOf('/') + 1));
 fetch("/api/query_messages", {
     method: "POST",
@@ -58,6 +60,20 @@ function add_chat_log_back(msg) {
   chat_log_div.scrollTop = (chat_log_div.scrollHeight - chat_log_div.clientHeight) - scroll_bottom;
 }
 
+function online_marker(online) {
+  if (online) {
+    online_dot.classList = ["online-dot"];
+  } else {
+    online_dot.classList = ["offline-dot"];
+  }
+}
+
+document.addEventListener('activityrecv', function (ev) {
+  let msg = ev.detail;
+  if (self_id == msg.player_id) {
+    online_marker(msg.online);
+  }
+})
 
 document.addEventListener('messagerecv', function (ev) {
     let msg = ev.detail;

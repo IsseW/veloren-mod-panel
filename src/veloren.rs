@@ -121,16 +121,7 @@ pub fn run(
             runtime,
         };
 
-        for (_, info) in client.player_list() {
-            let Ok(_) = client.send(crate::VelorenEvent {
-                player_alias: info.player_alias.clone(),
-                player_uuid: info.uuid,
-                time: Utc::now(),
-                kind: crate::VelorenEventKind::Activity { online: true },
-            }) else {
-                panic!();
-            };
-        }
+        let mut sent_players = false;
         
         let mut clock = Clock::new(Duration::from_secs_f64(1.0 / TPS as f64));
 
@@ -158,6 +149,20 @@ pub fn run(
                     continue;
                 }
             };
+
+            if !sent_players && !client.player_list().is_empty() {
+                for (_, info) in client.player_list() {
+                    let Ok(_) = client.send(crate::VelorenEvent {
+                        player_alias: info.player_alias.clone(),
+                        player_uuid: info.uuid,
+                        time: Utc::now(),
+                        kind: crate::VelorenEventKind::Activity { online: true },
+                    }) else {
+                        panic!();
+                    };
+                }
+                sent_players = true;
+            }
             retry_cnt = 0;
 
             for event in events {

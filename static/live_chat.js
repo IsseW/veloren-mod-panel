@@ -148,17 +148,16 @@ function add_message(msg, add_func) {
   var date = new Date(msg.time);
 
   node.querySelector(".message .time").textContent = date.toLocaleTimeString();
-  node.querySelector(".message .name").onclick = function () {
-    window.location.href = '/user/' + msg.player_id;
-  };
-  get_player_alias(msg.player_id).then(res => {
-    var node = document.getElementById(id);
-    node.querySelector(".message .name").textContent = res;
-  });
+
+  node.querySelector(".message .name").id = "player-" + msg.player_id;
   node.querySelector(".message .text").textContent = msg.message;
   node.querySelector(".message .text").style.color = ty_color(msg.ty);
 
   add_func(node);
+  get_player_alias(msg.player_id).then(res => {
+    var node = document.getElementById(id);
+    node.querySelector(".message .name").textContent = res;
+  });
 
   if (is_at_bottom) {
     messages_div.scrollTop = messages_div.scrollHeight - messages_div.clientHeight;
@@ -170,6 +169,13 @@ function add_message_front(msg) {
     messages_div.appendChild(node);
   });
 }
+
+document.addEventListener("click", function (ev) {
+  let target = ev.target;
+  if (target.classList.contains("name")) {
+    window.location.href = '/user/' + target.id.substring("player-".length);
+  }
+});
 
 function add_message_back(msg) {
   var scroll_bottom = (messages_div.scrollHeight - messages_div.clientHeight) - messages_div.scrollTop;
@@ -194,9 +200,16 @@ function subscribe(uri) {
 
     events.addEventListener("message", (ev) => {
       const msg = JSON.parse(ev.data);
-      var evt = new CustomEvent('messagerecv', {
-        detail: msg
-      });
+      if (msg.Activity != null) {
+        var evt = new CustomEvent('activityrecv', {
+          detail: msg.Activity,
+        });
+      }
+      if (msg.Message != null) {
+        var evt = new CustomEvent('messagerecv', {
+          detail: msg.Message,
+        });
+      }
       document.dispatchEvent(evt);
     });
 

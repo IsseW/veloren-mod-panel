@@ -34,7 +34,7 @@ html, body, main {
 }
 
 #message-box {
-  position: absolute;
+  position: fixed;
   z-index: 9;
   background: #46104c;
   border: 1px solid #980ac3;

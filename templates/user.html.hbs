@@ -2,7 +2,8 @@
 
 <html>
   {{> live-chat}}
-  <h1> <span id="online-dot-{{id}}" class={{#if online}}"online-dot"{{else}}"offline-dot"{{/if}}></span> {{alias}}</h1>
+  <button onclick="window.location.href='/'">Home</button>
+  <h1> <span id="online-dot" class={{#if online}}"online-dot"{{else}}"offline-dot"{{/if}}></span> {{alias}}</h1>
   <span><b>Time played: </b><span id="time-counter"></span></span>
   <script>
     function secondsToDhms(seconds) {

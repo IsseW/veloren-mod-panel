@@ -3,4 +3,34 @@
 <html>
   {{> live-chat}}
 
+  <div class="player-list">
+    <div id="player-list-header">
+      <h1><b>Player List</b></h1>
+    </div>
+    <div id="player-list">
+      <template id="player-entry-template">
+      <div class="entry">
+        <span class="name"></span>
+      </div>
+      </template>
+      {{#each players}}
+        <div class="entry" id={{entry_id}}>
+          <span class="name" id={{id}}>{{alias}}</span>
+        </div>
+      {{/each}}
+    </div>
+  </div>
+
+  <div>
+    <h1>Search</h1>
+    <div id="player-search">
+      <label for="player-input">Alias</label>
+      <input type="text" id="alias" />
+      <input type="submit" id="search" value="Search" />
+    </div>
+    <div id="player-search-list">
+
+    </div>
+  </div>
+  <script src="/static/player_list.js"></script>
 </html>

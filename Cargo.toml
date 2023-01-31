@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-veloren-common = { git = "https://gitlab.com/veloren/veloren", branch = "master", features = ["no-assets"] }
-veloren-client = { git = "https://gitlab.com/veloren/veloren", branch = "master" }
+veloren-common = { git = "https://gitlab.com/veloren/veloren", tag = "weekly", features = ["no-assets"] }
+veloren-client = { git = "https://gitlab.com/veloren/veloren", tag = "weekly" }
 async-channel = "1.5"
 tokio = { version = "1.2", features = ["macros", "rt-multi-thread", "signal"] }
 chrono = { version = "0.4.23", features = ["serde"] }

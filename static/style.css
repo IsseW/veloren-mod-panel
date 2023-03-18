@@ -20,6 +20,9 @@ html, body, main {
   width: 100%;
   word-wrap: break-word;
 }
+.selected {
+  background-color: #bf8866;
+}
 .time {
   color: #616268;
   display: none;
@@ -31,6 +34,14 @@ html, body, main {
 .name {
   color: rgb(40 158 215);
   cursor: pointer;
+}
+.goto {
+  color: rgb(40 158 215);
+  cursor: pointer;
+}
+
+#goto-bottom {
+  background-color: #6e6e6e;
 }
 
 #message-box {

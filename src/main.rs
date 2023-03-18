@@ -191,6 +191,29 @@ async fn messages_before(mut db: Connection<Db>, id: Option<u32>) -> Json<Vec<Me
     Json(messages.into_iter().map(Message::from).collect())
 }
 
+#[post("/messages_after?<id>")]
+async fn messages_after(mut db: Connection<Db>, id: Option<u32>) -> Json<Vec<Message>> {
+    let messages = if let Some(id) = id {
+        sqlx::query_as::<_, DbMessage>("
+            select *
+            from messages
+            where id > ?
+            order by id asc
+            limit 50;
+        ").bind(id).fetch_all(&mut *db)
+    } else {
+        sqlx::query_as::<_, DbMessage>("
+            select *
+            from messages
+            order by id asc
+            limit 50;
+        ").bind(id).fetch_all(&mut *db)
+    }
+    .await.unwrap();
+    
+    Json(messages.into_iter().map(Message::from).collect())
+}
+
 #[post("/players")]
 async fn player_list(player_list: &State<PlayerList>) -> Json<Vec<u32>> {
     Json(player_list.read().await.iter().copied().collect())
@@ -351,33 +374,9 @@ async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
 }
 
 pub fn customize_hbs(hbs: &mut Handlebars) {
-    hbs.register_template_string("live-chat", r#"
-        <div id="message-box">
-            <div id="message-boxheader" class="message-box-header">
-                <b id="chat-label">Chat</b>
-            </div>
+    hbs.register_template_file("live-chat", "templates/live_chat.hbs").expect("valid HBS template");
 
-            <div id="messages" class="message-box">
-                <template id="message">
-                <div class="message">
-                    <span class="time"></span>
-                    <span class="name"></span>
-                    <span class="text"></span>
-                </div>
-                </template>
-            </div>
-        </div>
-        <script src="/static/live_chat.js"></script>
-    "#).expect("valid HBS template");
-
-    hbs.register_template_string("head", r#"
-    <!DOCTYPE html>
-    <head>
-        <link rel="shortcut icon" href="https://veloren.net/icons/favicon/icon-192.png">
-        <title>Veloren Heimdall</title>
-        <link rel="stylesheet" href="/static/style.css">
-    </head>
-    "#).expect("valid HBS template");
+    hbs.register_template_file("head", "templates/head.hbs").expect("valid HBS template");
 }
 
 type PlayerList = Arc<RwLock<HashSet<u32>>>;
@@ -528,6 +527,6 @@ async fn rocket() -> _ {
         }))
         .register("/", catchers!(not_found))
         .mount("/", routes![index, user_page])
-        .mount("/api", routes![query_players, events, player_alias, messages_before, query_messages, player_list])
+        .mount("/api", routes![query_players, events, player_alias, messages_before, messages_after, query_messages, player_list])
         .mount("/static", FileServer::from(relative!("static")))
 }

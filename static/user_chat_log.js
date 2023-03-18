@@ -9,7 +9,7 @@ const self_id = parseInt(window.location.href.substring(window.location.href.las
 fetch("/api/query_messages", {
     method: "POST",
     body: JSON.stringify({
-        per_page: 100,
+        per_page: 100000,
         page: 0,
         player_id: self_id,
     })

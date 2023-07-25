@@ -1,19 +1,36 @@
 #![feature(async_closure, let_chains)]
-use std::{fmt::{Debug, Display}, collections::HashSet, sync::Arc};
+use std::{
+    collections::HashSet,
+    fmt::{Debug, Display},
+    sync::Arc,
+};
 
-use chrono::{DateTime, Utc, Duration};
+use chrono::{DateTime, Duration, Utc};
 use futures::executor::block_on;
-use rocket::{Request, response::stream::{EventStream, Event}, Shutdown, State, fs::{FileServer, relative}, Rocket, Build, fairing::{self, AdHoc}, serde::json::Json};
-use rocket_db_pools::{sqlx, Database, Connection};
-use rocket_dyn_templates::{Template, handlebars::Handlebars};
-use serde::{Serialize, Deserialize};
-use sqlx::{FromRow, sqlite::SqliteArguments, Arguments, Row, pool::PoolConnection, Sqlite, Pool};
-use tokio::{sync::{broadcast::{channel, error::RecvError, Receiver, Sender}, RwLock}, time::timeout};
+use rocket::{
+    fairing::{self, AdHoc},
+    fs::{relative, FileServer},
+    response::stream::{Event, EventStream},
+    serde::json::Json,
+    Build, Request, Rocket, Shutdown, State,
+};
+use rocket_db_pools::{sqlx, Connection, Database};
+use rocket_dyn_templates::{handlebars::Handlebars, Template};
+use serde::{Deserialize, Serialize};
+use sqlx::{pool::PoolConnection, sqlite::SqliteArguments, Arguments, FromRow, Pool, Row, Sqlite};
+use tokio::{
+    sync::{
+        broadcast::{channel, error::RecvError, Receiver, Sender},
+        RwLock,
+    },
+    time::timeout,
+};
 use veloren_common::uuid::Uuid;
 
 use crate::veloren::{env_key, run};
 
-#[macro_use] extern crate rocket;
+#[macro_use]
+extern crate rocket;
 
 mod veloren;
 
@@ -32,11 +49,17 @@ async fn index(player_list: &State<PlayerList>, mut db: Connection<Db>) -> Templ
     let mut context = Context::default();
     let ids = player_list.read().await.iter().copied().collect::<Vec<_>>();
     for id in ids {
-        let alias =  sqlx::query_scalar::<_, String>("
+        let alias = sqlx::query_scalar::<_, String>(
+            "
             select alias
             from players
             where id = ?;
-        ").bind(id).fetch_one(&mut *db).await.unwrap();
+        ",
+        )
+        .bind(id)
+        .fetch_one(&mut *db)
+        .await
+        .unwrap();
         context.players.push(Player {
             alias,
             id: format!("player-{id}"),
@@ -82,13 +105,8 @@ impl Display for MessageType {
 
 #[derive(Debug)]
 enum VelorenEventKind {
-    Message {
-        message: String,
-        ty: MessageType,
-    },
-    Activity {
-        online: bool,
-    },
+    Message { message: String, ty: MessageType },
+    Activity { online: bool },
 }
 
 pub struct VelorenEvent {
@@ -122,7 +140,7 @@ enum NetworkEvent {
 #[get("/events")]
 async fn events(queue: &State<Receiver<NetworkEvent>>, mut end: Shutdown) -> EventStream![] {
     let mut rx = queue.resubscribe();
-    
+
     EventStream! {
         loop {
             let msg = rocket::tokio::select! {
@@ -139,10 +157,12 @@ async fn events(queue: &State<Receiver<NetworkEvent>>, mut end: Shutdown) -> Eve
     }
 }
 
-#[post("/player_alias", data="<id>")]
+#[post("/player_alias", data = "<id>")]
 async fn player_alias(mut db: Connection<Db>, id: &str) -> Option<String> {
-    sqlx::query("select alias from players where id = ?").bind(id.parse::<u32>().ok()?)
-        .fetch_one(&mut *db).await
+    sqlx::query("select alias from players where id = ?")
+        .bind(id.parse::<u32>().ok()?)
+        .fetch_one(&mut *db)
+        .await
         .and_then(|r| r.try_get(0))
         .ok()
 }
@@ -171,46 +191,64 @@ impl From<DbMessage> for Message {
 #[post("/messages_before?<id>")]
 async fn messages_before(mut db: Connection<Db>, id: Option<u32>) -> Json<Vec<Message>> {
     let messages = if let Some(id) = id {
-        sqlx::query_as::<_, DbMessage>("
+        sqlx::query_as::<_, DbMessage>(
+            "
             select *
             from messages
             where id < ?
             order by id desc
             limit 50;
-        ").bind(id).fetch_all(&mut *db)
+        ",
+        )
+        .bind(id)
+        .fetch_all(&mut *db)
     } else {
-        sqlx::query_as::<_, DbMessage>("
+        sqlx::query_as::<_, DbMessage>(
+            "
             select *
             from messages
             order by id desc
             limit 50;
-        ").bind(id).fetch_all(&mut *db)
+        ",
+        )
+        .bind(id)
+        .fetch_all(&mut *db)
     }
-    .await.unwrap();
-    
+    .await
+    .unwrap();
+
     Json(messages.into_iter().map(Message::from).collect())
 }
 
 #[post("/messages_after?<id>")]
 async fn messages_after(mut db: Connection<Db>, id: Option<u32>) -> Json<Vec<Message>> {
     let messages = if let Some(id) = id {
-        sqlx::query_as::<_, DbMessage>("
+        sqlx::query_as::<_, DbMessage>(
+            "
             select *
             from messages
             where id > ?
             order by id asc
             limit 50;
-        ").bind(id).fetch_all(&mut *db)
+        ",
+        )
+        .bind(id)
+        .fetch_all(&mut *db)
     } else {
-        sqlx::query_as::<_, DbMessage>("
+        sqlx::query_as::<_, DbMessage>(
+            "
             select *
             from messages
             order by id asc
             limit 50;
-        ").bind(id).fetch_all(&mut *db)
+        ",
+        )
+        .bind(id)
+        .fetch_all(&mut *db)
     }
-    .await.unwrap();
-    
+    .await
+    .unwrap();
+
     Json(messages.into_iter().map(Message::from).collect())
 }
 
@@ -225,10 +263,10 @@ struct MessageQuery {
     page: Option<u32>,
     player_id: Option<u32>,
     after: Option<String>,
-    before: Option<String>
+    before: Option<String>,
 }
 
-#[post("/query_messages", data="<query>")]
+#[post("/query_messages", data = "<query>")]
 async fn query_messages(mut db: Connection<Db>, query: Json<MessageQuery>) -> Json<Vec<Message>> {
     let mut args = SqliteArguments::default();
     let mut where_statements = Vec::new();
@@ -238,10 +276,20 @@ async fn query_messages(mut db: Connection<Db>, query: Json<MessageQuery>) -> Js
         input_n += 1;
         args.add(player_id);
     }
-    let convert_dt = |dt: &str| Some(DateTime::<Utc>::from(DateTime::parse_from_rfc2822(&dt).ok()?));
-    match (query.after.as_deref().and_then(convert_dt), query.before.as_deref().and_then(convert_dt)) {
+    let convert_dt = |dt: &str| {
+        Some(DateTime::<Utc>::from(
+            DateTime::parse_from_rfc2822(&dt).ok()?,
+        ))
+    };
+    match (
+        query.after.as_deref().and_then(convert_dt),
+        query.before.as_deref().and_then(convert_dt),
+    ) {
         (Some(after), Some(before)) => {
-            where_statements.push(format!("time between date(${input_n}) and date(${})", input_n + 1));
+            where_statements.push(format!(
+                "time between date(${input_n}) and date(${})",
+                input_n + 1
+            ));
             input_n += 2;
             args.add(after);
             args.add(before);
@@ -260,30 +308,46 @@ async fn query_messages(mut db: Connection<Db>, query: Json<MessageQuery>) -> Js
     }
     let mut where_statements = where_statements.into_iter();
     let where_statement = where_statements.next();
-    let where_statement = where_statement.map(|acc| where_statements.fold("where ".to_owned() + &acc, |mut acc, b| {
-        acc.push_str(" and ");
-        acc.push_str(&b);
-        acc
-    })).unwrap_or(String::new());
+    let where_statement = where_statement
+        .map(|acc| {
+            where_statements.fold("where ".to_owned() + &acc, |mut acc, b| {
+                acc.push_str(" and ");
+                acc.push_str(&b);
+                acc
+            })
+        })
+        .unwrap_or(String::new());
     let per_page = query.per_page.unwrap_or(50);
     args.add(query.per_page);
 
     args.add(query.page.unwrap_or(0) * per_page);
-    let query = format!("select * from messages {where_statement} order by id desc limit ${input_n} offset ${}", input_n + 1);
+    let query = format!(
+        "select * from messages {where_statement} order by id desc limit ${input_n} offset ${}",
+        input_n + 1
+    );
 
-    let messages = sqlx::query_as_with::<_, DbMessage, _>(&query, args).fetch_all(&mut *db).await.unwrap();
-    
+    let messages = sqlx::query_as_with::<_, DbMessage, _>(&query, args)
+        .fetch_all(&mut *db)
+        .await
+        .unwrap();
+
     Json(messages.into_iter().map(Message::from).collect())
 }
 
 #[post("/players?<alias>")]
 async fn query_players(mut db: Connection<Db>, alias: Option<String>) -> Json<Vec<u32>> {
     let like = format!("%{}%", alias.as_deref().unwrap_or(""));
-    let ids = sqlx::query_scalar("
+    let ids = sqlx::query_scalar(
+        "
         select id
         from players
         where alias like ?;
-    ").bind(like).fetch_all(&mut *db).await.unwrap();
+    ",
+    )
+    .bind(like)
+    .fetch_all(&mut *db)
+    .await
+    .unwrap();
 
     Json(ids)
 }
@@ -294,11 +358,17 @@ async fn query_playtime(db: &mut Connection<Db>, id: u32) -> (Duration, bool) {
         time: DateTime<Utc>,
         online: bool,
     }
-    sqlx::query_as::<_, Activity>("
+    sqlx::query_as::<_, Activity>(
+        "
         select time,online
         from activity
         where player_id = ?;
-    ").bind(id).fetch_all(&mut **db).await.map(|activity| {
+    ",
+    )
+    .bind(id)
+    .fetch_all(&mut **db)
+    .await
+    .map(|activity| {
         let mut expects_online = true;
         let mut duration = Duration::zero();
         let mut start = Utc::now();
@@ -309,7 +379,7 @@ async fn query_playtime(db: &mut Connection<Db>, id: u32) -> (Duration, bool) {
                 } else {
                     duration = duration.checked_add(&(a.time - start)).unwrap();
                 }
-                
+
                 expects_online = !expects_online;
             } else {
                 rocket::error!("Expected online = {expects_online}");
@@ -319,16 +389,23 @@ async fn query_playtime(db: &mut Connection<Db>, id: u32) -> (Duration, bool) {
             duration = duration.checked_add(&(Utc::now() - start)).unwrap();
         }
         (duration, !expects_online)
-    }).unwrap()
+    })
+    .unwrap()
 }
 
 #[get("/user/<id>")]
 async fn user_page(mut db: Connection<Db>, id: u32) -> Template {
-    match sqlx::query_scalar::<_, String>("
+    match sqlx::query_scalar::<_, String>(
+        "
         select alias
         from players
         where id = ?;
-    ").bind(id).fetch_one(&mut *db).await {
+    ",
+    )
+    .bind(id)
+    .fetch_one(&mut *db)
+    .await
+    {
         Ok(alias) => {
             #[derive(Serialize)]
             struct Context {
@@ -351,7 +428,6 @@ async fn user_page(mut db: Connection<Db>, id: u32) -> Template {
             return Template::render("user_not_found", ());
         }
     }
-
 }
 
 #[derive(Database)]
@@ -361,37 +437,44 @@ struct Db(sqlx::SqlitePool);
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
     match Db::fetch(&rocket) {
         Some(db) => match sqlx::migrate!("db/logs/migrations").run(&**db).await {
-            Ok(_) => {
-                Ok(rocket)
-            },
+            Ok(_) => Ok(rocket),
             Err(e) => {
                 error!("Failed to initialize SQLx database: {}", e);
                 Err(rocket)
             }
-        }
+        },
         None => Err(rocket),
     }
 }
 
 pub fn customize_hbs(hbs: &mut Handlebars) {
-    hbs.register_template_file("live-chat", "templates/live_chat.hbs").expect("valid HBS template");
+    hbs.register_template_file("live-chat", "templates/live_chat.hbs")
+        .expect("valid HBS template");
 
-    hbs.register_template_file("head", "templates/head.hbs").expect("valid HBS template");
+    hbs.register_template_file("head", "templates/head.hbs")
+        .expect("valid HBS template");
 }
 
 type PlayerList = Arc<RwLock<HashSet<u32>>>;
-async fn handle_database_msg(mut conn: PoolConnection<Sqlite>, msg: VelorenEvent, player_list: &PlayerList, sx: &Sender<NetworkEvent>) {
+async fn handle_database_msg(
+    mut conn: PoolConnection<Sqlite>,
+    msg: VelorenEvent,
+    player_list: &PlayerList,
+    sx: &Sender<NetworkEvent>,
+) {
     let mut args = SqliteArguments::default();
-    args.add(msg.player_uuid);
+    args.add(msg.player_uuid.to_string());
     args.add(msg.player_alias);
     let player_id = sqlx::query_scalar_with::<_, u32, _>(
         "
         insert or ignore into players (uuid, alias) values ($1, $2);
         select id from players where uuid = $1;
-        ", args
+        ",
+        args,
     )
     .fetch_one(&mut conn)
-    .await.unwrap();
+    .await
+    .unwrap();
 
     let mut args = SqliteArguments::default();
     args.add(player_id);
@@ -405,18 +488,21 @@ async fn handle_database_msg(mut conn: PoolConnection<Sqlite>, msg: VelorenEvent
                 "
                 insert into messages (player_id, time, content, ty) values ($1, $2, $3, $4);
                 select last_insert_rowid() as id;
-                ", args
-            ).fetch_one(&mut conn)
-            .await.unwrap();
+                ",
+                args,
+            )
+            .fetch_one(&mut conn)
+            .await
+            .unwrap();
 
             let _ = sx.send(NetworkEvent::Message(Message {
-                id: id,
-                player_id: player_id,
+                id,
+                player_id,
                 message,
                 time: msg.time,
                 ty,
             }));
-        },
+        }
         VelorenEventKind::Activity { online } => {
             if online {
                 player_list.write().await.insert(player_id);
@@ -424,19 +510,20 @@ async fn handle_database_msg(mut conn: PoolConnection<Sqlite>, msg: VelorenEvent
                 player_list.write().await.remove(&player_id);
             }
             args.add(online);
-            sqlx::query_with("
+            sqlx::query_with(
+                "
                 insert into activity (player_id, time, online) values ($1, $2, $3);
-            ", args).execute(&mut conn).await.unwrap();
+            ",
+                args,
+            )
+            .execute(&mut conn)
+            .await
+            .unwrap();
 
-            let _ = sx.send(NetworkEvent::Activity(Activity {
-                player_id,
-                online,
-            }));
-        },
+            let _ = sx.send(NetworkEvent::Activity(Activity { player_id, online }));
+        }
     }
-
 }
-
 
 struct DbDrop {
     rx: tokio::sync::mpsc::Receiver<VelorenEvent>,
@@ -448,7 +535,9 @@ struct DbDrop {
 impl Drop for DbDrop {
     fn drop(&mut self) {
         block_on(async {
-            while let Ok(Some(msg)) = timeout(std::time::Duration::from_millis(100), self.rx.recv()).await {
+            while let Ok(Some(msg)) =
+                timeout(std::time::Duration::from_millis(100), self.rx.recv()).await
+            {
                 if let Ok(conn) = self.pool.acquire().await {
                     handle_database_msg(conn, msg, &self.player_list, &self.sx).await
                 }
@@ -468,36 +557,39 @@ async fn rocket() -> _ {
         .manage(player_list.clone())
         .attach(Db::init())
         .attach(AdHoc::try_on_ignite("Logs db migrations", run_migrations))
-        .attach(AdHoc::try_on_ignite("Route through database", |rocket| async {
-            let pool = match Db::fetch(&rocket) {
-                Some(pool) => pool.0.clone(),
-                None => return Err(rocket),
-            };
-
-            rocket::tokio::task::spawn(async move {
-                let mut db = DbDrop {
-                    rx: rx_db,
-                    pool,
-                    player_list,
-                    sx,
+        .attach(AdHoc::try_on_ignite(
+            "Route through database",
+            |rocket| async {
+                let pool = match Db::fetch(&rocket) {
+                    Some(pool) => pool.0.clone(),
+                    None => return Err(rocket),
                 };
-                loop {
-                    match db.rx.recv().await {
-                        Some(msg) => {
-                            if let Ok(conn) = db.pool.acquire().await {
-                                handle_database_msg(conn, msg, &db.player_list, &db.sx).await
+
+                rocket::tokio::task::spawn(async move {
+                    let mut db = DbDrop {
+                        rx: rx_db,
+                        pool,
+                        player_list,
+                        sx,
+                    };
+                    loop {
+                        match db.rx.recv().await {
+                            Some(msg) => {
+                                if let Ok(conn) = db.pool.acquire().await {
+                                    handle_database_msg(conn, msg, &db.player_list, &db.sx).await
+                                }
+                            }
+                            None => {
+                                println!("No more messages");
+                                break;
                             }
                         }
-                        None => {
-                            println!("No more messages");
-                            break;
-                        },
                     }
-                }
-            });
+                });
 
-            Ok(rocket)
-        }))
+                Ok(rocket)
+            },
+        ))
         .attach(AdHoc::on_liftoff("Veloren client", |rocket| {
             Box::pin(async move {
                 let veloren_server = veloren_client::addr::ConnectionArgs::Tcp {
@@ -515,11 +607,19 @@ async fn rocket() -> _ {
                     veloren_password,
                     trusted_auth_server,
                     sx_db,
-                    std::sync::Arc::new(rocket::tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap()),
+                    std::sync::Arc::new(
+                        rocket::tokio::runtime::Builder::new_multi_thread()
+                            .enable_all()
+                            .build()
+                            .unwrap(),
+                    ),
                     rocket.shutdown(),
                 );
 
-                rocket::info!("Veloren-Common/Client version: {}", *veloren_common::util::DISPLAY_VERSION_LONG);
+                rocket::info!(
+                    "Veloren-Common/Client version: {}",
+                    *veloren_common::util::DISPLAY_VERSION_LONG
+                );
             })
         }))
         .attach(Template::custom(|engine| {
@@ -527,6 +627,17 @@ async fn rocket() -> _ {
         }))
         .register("/", catchers!(not_found))
         .mount("/", routes![index, user_page])
-        .mount("/api", routes![query_players, events, player_alias, messages_before, messages_after, query_messages, player_list])
+        .mount(
+            "/api",
+            routes![
+                query_players,
+                events,
+                player_alias,
+                messages_before,
+                messages_after,
+                query_messages,
+                player_list
+            ],
+        )
         .mount("/static", FileServer::from(relative!("static")))
 }

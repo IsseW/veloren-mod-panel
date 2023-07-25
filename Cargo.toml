@@ -9,13 +9,13 @@ edition = "2021"
 veloren-common = { git = "https://gitlab.com/veloren/veloren", tag = "weekly", features = ["no-assets"] }
 veloren-client = { git = "https://gitlab.com/veloren/veloren", tag = "weekly" }
 async-channel = "1.5"
-tokio = { version = "1.2", features = ["macros", "rt-multi-thread", "signal"] }
+tokio = { version = "1.28", features = ["macros", "rt", "rt-multi-thread", "signal"] }
 chrono = { version = "0.4.23", features = ["serde"] }
 # sea-orm = { version = "0.10.4", features = ["with-chrono", "runtime-tokio"] }
 serde = { version = "1.0.148", features = ["derive"] }
-rocket = { version = "0.5.0-rc.2", features = ["json"] }
-rocket_db_pools = { version = "0.1.0-rc.2", features = ["sqlx_sqlite"] }
-rocket_dyn_templates = { version = "0.1.0-rc.2", features = ["handlebars"] }
-sqlx = { version = "0.5.1", default-features = false, features = ["macros", "offline", "migrate", "chrono", "uuid"] }
+rocket = { version = "0.5.0-rc.3", features = ["json"] }
+rocket_db_pools = { version = "0.1.0-rc.3", features = ["sqlx_sqlite"] }
+rocket_dyn_templates = { version = "0.1.0-rc.3", features = ["handlebars"] }
+sqlx = { version = "0.6", default-features = false, features = ["macros", "migrate", "chrono", "uuid"] }
 kankyo = "0.3.0"
 futures = "0.3.25"

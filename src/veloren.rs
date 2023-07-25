@@ -1,14 +1,25 @@
 use chrono::Utc;
 use rocket::futures::FutureExt;
-use tokio::{runtime::Runtime, sync::mpsc::{Sender, error::SendError}};
-use veloren_client::{addr::ConnectionArgs, Event as VelorenEvent, Client as VelorenClient};
-use veloren_common::{clock::Clock, util::{GIT_DATE, GIT_HASH}, comp};
-use std::{sync::Arc, time::Duration, thread, ops::{Deref, DerefMut}};
+use std::{
+    ops::{Deref, DerefMut},
+    sync::Arc,
+    thread,
+    time::Duration,
+};
+use tokio::{
+    runtime::Runtime,
+    sync::mpsc::{error::SendError, Sender},
+};
+use veloren_client::{addr::ConnectionArgs, Client as VelorenClient, Event as VelorenEvent};
+use veloren_common::{
+    clock::Clock,
+    comp,
+    util::{GIT_DATE, GIT_HASH},
+};
 
-use crate::{MessageType};
+use crate::MessageType;
 
-
-const TPS: u64 = 60;
+const TPS: f64 = 10.0;
 
 async fn connect_to_veloren(
     addr: ConnectionArgs,
@@ -56,7 +67,6 @@ async fn connect_to_veloren(
         return veloren_client;
     }
 }
-
 
 struct Client {
     sx: Sender<crate::VelorenEvent>,
@@ -122,18 +132,14 @@ pub fn run(
         };
 
         let mut sent_players = false;
-        
-        let mut clock = Clock::new(Duration::from_secs_f64(1.0 / TPS as f64));
+
+        let mut clock = Clock::new(Duration::from_secs_f64(1.0 / TPS));
 
         loop {
             if (&mut shutdown).now_or_never().is_some() {
                 break;
             }
-            let events = match client.tick(
-                comp::ControllerInputs::default(),
-                clock.dt(),
-                |_| {},
-            ) {
+            let events = match client.tick(comp::ControllerInputs::default(), clock.dt(), |_| {}) {
                 Ok(events) => events,
                 Err(e) => {
                     rocket::error!("Failed to tick client: {:?}, retry: {}", e, retry_cnt);
@@ -168,13 +174,16 @@ pub fn run(
             for event in events {
                 match event {
                     VelorenEvent::Chat(msg) => {
-                        let message = msg.message;
+                        let message = msg.content().as_plain().unwrap_or("");
 
                         use veloren_common::comp::chat::ChatType;
 
                         let send_message = |uid, ty: MessageType| {
                             if let Some(info) = client.player_list().get(&uid) {
-                                let message = message.split_once(':').map(|(_, message)| message).unwrap_or(&message);
+                                let message = message
+                                    .split_once(':')
+                                    .map(|(_, message)| message)
+                                    .unwrap_or(&message);
 
                                 let Ok(_) = client.send(crate::VelorenEvent {
                                     player_alias: info.player_alias.clone(),
@@ -189,7 +198,6 @@ pub fn run(
 
                         let send_activity = |uid, online| {
                             if let Some(info) = client.player_list().get(&uid) {
-
                                 let Ok(_) = client.send(crate::VelorenEvent {
                                     player_alias: info.player_alias.clone(),
                                     player_uuid: info.uuid,
@@ -204,25 +212,17 @@ pub fn run(
                         match msg.chat_type {
                             ChatType::Online(uid) => {
                                 send_activity(uid, true);
-                            },
+                            }
                             ChatType::Offline(uid) => {
                                 send_activity(uid, false);
-                            },
-                            ChatType::World(uid) => {
-                                send_message(uid, MessageType::World)
-                            },
-                            ChatType::Tell(uid, _) => {
-                                send_message(uid, MessageType::Tell)
                             }
-                            ChatType::Faction(uid, _) => {
-                                send_message(uid, MessageType::Faction)
-                            },
+                            ChatType::World(uid) => send_message(uid, MessageType::World),
+                            ChatType::Tell(uid, _) => send_message(uid, MessageType::Tell),
+                            ChatType::Faction(uid, _) => send_message(uid, MessageType::Faction),
                             _ => {}
                         }
                     }
-                    VelorenEvent::Disconnect => {
-
-                    }
+                    VelorenEvent::Disconnect => {}
                     VelorenEvent::DisconnectionNotification(_) => {
                         rocket::debug!("Will be disconnected soon! :/")
                     }
